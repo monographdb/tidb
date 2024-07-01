@@ -207,7 +207,8 @@ func (b *targetInfoGetter) FetchRemoteTableModels(ctx context.Context, schemaNam
 		)
 		tables := []*model.TableInfo{}
 		for rows.Next() {
-			var tableName, columnName, columnType, generationExpr, columnExtra string
+			var generationExpr sql.NullString
+			var tableName, columnName, columnType, columnExtra string
 			if e := rows.Scan(&tableName, &columnName, &columnType, &generationExpr, &columnExtra); e != nil {
 				return e
 			}
@@ -238,7 +239,7 @@ func (b *targetInfoGetter) FetchRemoteTableModels(ctx context.Context, schemaNam
 				Offset:              curColOffset,
 				State:               model.StatePublic,
 				FieldType:           ft,
-				GeneratedExprString: generationExpr,
+				GeneratedExprString: generationExpr.String,
 			})
 			curColOffset++
 		}
@@ -652,6 +653,9 @@ rowLoop:
 				continue rowLoop
 			case common.IsRetryableError(err):
 				// retry next loop
+				if be.maybeEloqSQLBlock(ctx, tableName, err) {
+					i--
+				}
 			case be.errorMgr.TypeErrorsRemain() > 0 ||
 				be.errorMgr.ConflictErrorsRemain() > 0 ||
 				(be.conflictCfg.Strategy == config.ErrorOnDup && !be.errorMgr.RecordErrorOnce()):
@@ -754,6 +758,15 @@ func (be *tidbBackend) buildStmt(tableName string, columnNames []string) *string
 	return &insertStmt
 }
 
+func (be *tidbBackend) maybeEloqSQLBlock(ctx context.Context, tableName string, err error) bool {
+	if common.IsEloqSQLRetryable(err) {
+		log.FromContext(ctx).Warn("EloqSQL response error", zap.String("table", tableName), zap.Error(err))
+		time.Sleep(time.Second)
+		return true
+	}
+	return false
+}
+
 func (be *tidbBackend) execStmts(ctx context.Context, stmtTasks []stmtTask, tableName string, batch bool) error {
 stmtLoop:
 	for _, stmtTask := range stmtTasks {
@@ -792,6 +805,9 @@ stmtLoop:
 			}
 			if !common.IsRetryableError(err) {
 				break
+			}
+			if be.maybeEloqSQLBlock(ctx, tableName, err) {
+				i--
 			}
 		}
 

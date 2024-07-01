@@ -257,6 +257,14 @@ func (si *SchemaImporter) importViews(ctx context.Context, dbMetas []*MDDatabase
 }
 
 func (si *SchemaImporter) runJob(ctx context.Context, p *parser.Parser, job *schemaJob) error {
+	// Hack for EloqSQL
+	origSql := job.sqlStr
+	job.sqlStr = strings.ReplaceAll(job.sqlStr, "/*!80016 DEFAULT ENCRYPTION='N' */", "")
+	job.sqlStr = strings.ReplaceAll(job.sqlStr, "ENGINE=InnoDB", "ENGINE=MONOGRAPH")
+	job.sqlStr = strings.ReplaceAll(job.sqlStr, "ENGINE=MyISAM", "ENGINE=MONOGRAPH")
+	job.sqlStr = strings.ReplaceAll(job.sqlStr, "utf8mb4_0900_ai_ci", "utf8mb4_bin")
+	si.logger.Info("Replace SQL for EloqSQL", zap.String("origin", origSql), zap.String("after", job.sqlStr))
+
 	stmts, err := createIfNotExistsStmt(p, job.sqlStr, job.dbName, job.tblName)
 	if err != nil {
 		return errors.Trace(err)
