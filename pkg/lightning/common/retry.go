@@ -99,6 +99,19 @@ var retryableErrorIDs = map[errors.ErrorID]struct{}{
 // https://github.com/pingcap/tidb/issues/46321 and I don't know why 😭
 var ErrWriteTooSlow = errors.New("write too slow, maybe gRPC is blocked forever")
 
+const EloqSQLCommitFailed = 199
+const EloqSQLTxnBreak = 217
+
+func IsEloqSQLRetryable(err error) bool {
+	err = errors.Cause(err)
+	if mye, ok := err.(*mysql.MySQLError); ok {
+		if mye.Number >= EloqSQLCommitFailed && mye.Number <= EloqSQLTxnBreak {
+			return true
+		}
+	}
+	return false
+}
+
 func isSingleRetryableError(err error) bool {
 	err = errors.Cause(err)
 
@@ -121,11 +134,14 @@ func isSingleRetryableError(err error) bool {
 		}
 		return false
 	case *mysql.MySQLError:
+		if nerr.Number >= EloqSQLCommitFailed && nerr.Number <= EloqSQLTxnBreak {
+			return true
+		}
 		switch nerr.Number {
 		// ErrLockDeadlock can retry to commit while meet deadlock
 		case tmysql.ErrUnknown, tmysql.ErrLockDeadlock, tmysql.ErrWriteConflict, tmysql.ErrWriteConflictInTiDB,
 			tmysql.ErrPDServerTimeout, tmysql.ErrTiKVServerTimeout, tmysql.ErrTiKVServerBusy, tmysql.ErrResolveLockTimeout,
-			tmysql.ErrRegionUnavailable, tmysql.ErrInfoSchemaExpired, tmysql.ErrInfoSchemaChanged, tmysql.ErrTxnRetryable:
+			tmysql.ErrRegionUnavailable, tmysql.ErrInfoSchemaExpired, tmysql.ErrInfoSchemaChanged, tmysql.ErrTxnRetryable, EloqSQLCommitFailed:
 			return true
 		default:
 			return false

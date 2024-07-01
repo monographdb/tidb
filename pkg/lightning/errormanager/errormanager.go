@@ -65,7 +65,7 @@ const (
 			create_time datetime(6) NOT NULL DEFAULT now(6),
 			table_name  varchar(261) NOT NULL,
 			path        varchar(2048) NOT NULL,
-			offset      bigint NOT NULL,
+			offst       bigint NOT NULL,
 			error       text NOT NULL,
 			context     text
 		);
@@ -77,7 +77,7 @@ const (
 			create_time datetime(6) NOT NULL DEFAULT now(6),
 			table_name  varchar(261) NOT NULL,
 			path        varchar(2048) NOT NULL,
-			offset      bigint NOT NULL,
+			offst       bigint NOT NULL,
 			error       text NOT NULL,
 			row_data    text NOT NULL
 		);
@@ -108,7 +108,7 @@ const (
 			create_time datetime(6) NOT NULL DEFAULT now(6),
 			table_name  varchar(261) NOT NULL,
 			path        varchar(2048) NOT NULL,
-			offset      bigint NOT NULL,
+			offst    bigint NOT NULL,
 			error       text NOT NULL,
 			row_id 	    bigint NOT NULL COMMENT 'the row id of the conflicted row',
 			row_data    text NOT NULL COMMENT 'the row data of the conflicted row',
@@ -119,16 +119,16 @@ const (
 	createConflictView = `
     	CREATE OR REPLACE VIEW %s.` + ConflictViewName + `
 			AS SELECT 0 AS is_precheck_conflict, task_id, create_time, table_name, index_name, key_data, row_data,
-			raw_key, raw_value, raw_handle, raw_row, is_data_kv, NULL AS path, NULL AS offset, NULL AS error, NULL AS row_id
+			raw_key, raw_value, raw_handle, raw_row, is_data_kv, NULL AS path, NULL AS offst, NULL AS error, NULL AS row_id
 			FROM %s.` + ConflictErrorTableName + `
 			UNION ALL SELECT 1 AS is_precheck_conflict, task_id, create_time, table_name, NULL AS index_name, NULL AS key_data,
 			row_data, NULL AS raw_key, NULL AS raw_value, NULL AS raw_handle, NULL AS raw_row, NULL AS is_data_kv, path,
-			offset, error, row_id FROM %s.` + DupRecordTableName + `;
+			offst, error, row_id FROM %s.` + DupRecordTableName + `;
 	`
 
 	insertIntoTypeError = `
 		INSERT INTO %s.` + typeErrorTableName + `
-		(task_id, table_name, path, offset, error, row_data)
+		(task_id, table_name, path, offst, error, row_data)
 		VALUES (?, ?, ?, ?, ?, ?);
 	`
 
@@ -169,7 +169,7 @@ const (
 
 	insertIntoDupRecord = `
 		INSERT INTO %s.` + DupRecordTableName + `
-		(task_id, table_name, path, offset, error, row_id, row_data)
+		(task_id, table_name, path, offst, error, row_id, row_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?);
 	`
 )
