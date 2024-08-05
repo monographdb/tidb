@@ -698,6 +698,7 @@ func (tr *TableImporter) preprocessEngine(
 
 	metrics, _ := metric.FromContext(ctx)
 
+	logTask.Info("preprocessEngine", zap.Int("numChunks", len(cp.Chunks)))
 	// Restore table data
 ChunkLoop:
 	for chunkIndex, chunk := range cp.Chunks {
