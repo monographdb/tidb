@@ -689,10 +689,10 @@ func (be *tidbBackend) WriteBatchRowsToDB(ctx context.Context, tableName string,
 	if insertStmt == nil {
 		return nil
 	}
-	start := time.Now()
-	defer func() {
-		log.FromContext(ctx).Debug("write batch", zap.String("table", tableName), zap.Int("rows", len(rows)), zap.Duration("cost", time.Since(start)))
-	}()
+	// start := time.Now()
+	// defer func() {
+	// 	log.FromContext(ctx).Debug("write batch", zap.String("table", tableName), zap.Int("rows", len(rows)), zap.Duration("cost", time.Since(start)))
+	// }()
 	// Note: we are not going to do interpolation (prepared statements) to avoid
 	// complication arise from data length overflow of BIT and BINARY columns
 	stmtTasks := make([]stmtTask, 1)
